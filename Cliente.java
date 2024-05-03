@@ -26,7 +26,7 @@ public class Cliente extends Thread {
 
                 ArrayList<String> Log = new ArrayList<String>();
 
-                System.out.print("Ingrese un mensaje (\"exit\" para terminar): ");
+                System.out.print("Inicie la comunicacion con el servidor: ");
                 userInput = scanner.nextLine();
                 Log.add(userInput);
                 userInput = "1,"+userInput;
@@ -35,20 +35,41 @@ public class Cliente extends Thread {
                 while (true) {
                     out.println(userInput);
                     String rtaServer = in.readLine();
-                    System.out.println("Respuesta del servidor: " + rtaServer);
                     String [] message = rtaServer.split(",");
-                    System.out.println(message[0] + " " + message[1]);
 
                     if (message[0].equals("2")){
-                        System.out.println("Respuesta del servidor: " + message[1]);
+                        System.out.println("CLIENT: Respuesta del servidor: " + message[1]);
                         userInput = "OK";
                         Log.add(userInput);
-                        userInput = "3,"+userInput;
+                        userInput = "4,"+userInput;
+                    }
+                    else if (message[0].equals("7")){
+                        System.out.println("CLIENT: Respuesta del servidor: "+message[1]
+                                            +","+message[2]+","+message[3]+","+message[4]+","+message[5]);
+                        // Validar Llave Asimetrica
+                        userInput = "OK";
+                        Log.add(userInput);
+                        userInput = "9," + userInput;
+
+                    }
+                    else if (message[0].equals("12")) {
+                        System.out.println("CLIENT: Respuesta del servidor: " + rtaServer);
+                        userInput = "Login,Contraseña";
+                        Log.add(userInput);
+                        userInput = "13," + userInput;
+                    }
+                    else if (message[0].equals("16")) {
+                        System.out.println("CLIENT: Respuesta del servidor: " + rtaServer);
+                        userInput = "Consulta";
+                        Log.add(userInput);
+                        userInput = "17," + userInput;
+                        
                     }
                     else {
-                        userInput = scanner.nextLine();
-                        userInput = "10,"+userInput;
+                        System.out.println("CLIENT: Respuesta del servidor: " + rtaServer);
+                        break;
                     }
+                    
                     
                 }
             }

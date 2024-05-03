@@ -23,19 +23,39 @@ public class Servidor extends Thread {
 
                 String clientInput;
                 while ((clientInput = input.readLine()) != null) {
-                    System.out.println("Recibido del cliente: " + clientInput);
+                    System.out.println("SERVER: Recibido del cliente: " + clientInput);
                     String [] message = clientInput.split(",");
                     if (message[0].equals("1")){
-                        output.println("2,Cifrar: "+ message[1]);
+                        output.println("2,Cifra "+ message[1]);
                     }
-                    else if (message[0].equals("3")){
-                        output.println("4,Validar: "+ message[1]);
+                    else if (message[0].equals("4")){
+                        if (message[1].equals("OK")) {
+                            output.println("7,G,P,Gx,iv,C(K_w-.(G.P.Gx))");
+                        }else{
+                            output.println("ERROR");
+                        }
+                        
                     }
-                    else if (message[0].equals("10")){
-                        output.println("11,Descifrar: "+ message[1]);
+                    else if (message[0].equals("9")){
+                        if (message[1].equals("OK")) {
+                            // Calcualr Gy^x
+                            // K_AB1
+                            // K_AB2
+                            output.println("12,K_AB1,K_AB2");
+                        }else{
+                            output.println("ERROR");
+                        }   
                     }
-                    else {
-                        output.println("Respuesta del servidor: " + clientInput);
+                    else if (message[0].equals("13")){
+                        if (message[1].equals("Login") && message[2].equals("Contraseña")) {
+                            output.println("16,OK");
+                        }else{
+                            output.println("ERROR");
+                        }
+                    }
+                    else if (message[0].equals("17")){
+                        // Responder
+                        output.println("19,rta");    
                     }
 
                     
