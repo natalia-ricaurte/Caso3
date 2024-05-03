@@ -1,15 +1,24 @@
 import java.io.*;
+import java.math.BigInteger;
 import java.net.Socket;
+import java.security.Key;
 import java.util.ArrayList;
 import java.util.Scanner;
 
 public class Cliente extends Thread {
     private String host;
     private int port;
+    private BigInteger P;
+    private Integer G;
+    private Key publicKey;
 
-    public Cliente(String host, int port) {
+    public Cliente(String host, int port, BigInteger P, Integer G, Key publicKey) {
         this.host = host;
         this.port = port;
+        this.P = P;
+        this.G = G;
+        this.publicKey = publicKey;
+
     }
 
     @Override

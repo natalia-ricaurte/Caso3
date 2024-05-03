@@ -1,12 +1,22 @@
 import java.io.*;
+import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.Key;
 
 public class Servidor extends Thread {
     private int port;
+    private BigInteger P;
+    private Integer G;
+    private Key publicKey;
+    private Key privateKey;
 
-    public Servidor(int port) {
+    public Servidor(int port, BigInteger P, Integer G, Key publicKey, Key privateKey) {
         this.port = port;
+        this.P = P;
+        this.G = G;
+        this.publicKey = publicKey;
+        this.privateKey = privateKey;
     }
 
     @Override
