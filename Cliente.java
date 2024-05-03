@@ -3,6 +3,7 @@ import java.math.BigInteger;
 import java.net.Socket;
 import java.security.Key;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Scanner;
 
 public class Cliente extends Thread {
@@ -44,10 +45,12 @@ public class Cliente extends Thread {
                 while (true) {
                     out.println(userInput);
                     String rtaServer = in.readLine();
-                    String [] message = rtaServer.split(",");
+                    String[] message = rtaServer.split(",");
 
                     if (message[0].equals("2")){
                         System.out.println("CLIENT: Respuesta del servidor: " + message[1]);
+
+                   
                         userInput = "OK";
                         Log.add(userInput);
                         userInput = "4,"+userInput;

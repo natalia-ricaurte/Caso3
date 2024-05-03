@@ -36,7 +36,10 @@ public class Servidor extends Thread {
                     System.out.println("SERVER: Recibido del cliente: " + clientInput);
                     String [] message = clientInput.split(",");
                     if (message[0].equals("1")){
-                        output.println("2,Cifra "+ message[1]);
+
+                        byte [] cifra = CifradoAsimétrico.cifrar(publicKey, "RSA", message[1]);
+                        output.println("2,Cifra "+ cifra);
+
                     }
                     else if (message[0].equals("4")){
                         if (message[1].equals("OK")) {
