@@ -3,6 +3,7 @@ import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.Key;
+import java.util.Base64;
 
 public class Servidor extends Thread {
     private int port;
@@ -37,9 +38,14 @@ public class Servidor extends Thread {
                     String [] message = clientInput.split(",");
                     if (message[0].equals("1")){
 
-                        byte [] cifra = CifradoAsimétrico.cifrar(publicKey, "RSA", message[1]);
-                        output.println("2,Cifra "+ cifra);
-
+                     try {
+                        byte[] cifrado = CifradoAsimétrico.cifrar(privateKey, "RSA", message[1]); 
+                        String cifradoBase64 = Base64.getEncoder().encodeToString(cifrado);
+                        output.println("2,Cifra," + cifradoBase64); 
+                    } catch (Exception e) {
+                        System.out.println("Error cifrando el mensaje: " + e.getMessage());
+                        e.printStackTrace();
+}
                     }
                     else if (message[0].equals("4")){
                         if (message[1].equals("OK")) {

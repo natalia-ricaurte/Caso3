@@ -33,11 +33,12 @@ public class Cliente extends Thread {
             
             try (Scanner scanner = new Scanner(System.in)) {
                 String userInput;
-
+                
                 ArrayList<String> Log = new ArrayList<String>();
 
                 System.out.print("Inicie la comunicacion con el servidor: ");
                 userInput = scanner.nextLine();
+                String mensajeEntrada = userInput;
                 Log.add(userInput);
                 userInput = "1,"+userInput;
 
@@ -48,12 +49,25 @@ public class Cliente extends Thread {
                     String[] message = rtaServer.split(",");
 
                     if (message[0].equals("2")){
-                        System.out.println("CLIENT: Respuesta del servidor: " + message[1]);
-
-                   
-                        userInput = "OK";
-                        Log.add(userInput);
-                        userInput = "4,"+userInput;
+                        System.out.println("CLIENT: Respuesta del servidor: " + message[2]);
+                        try {
+                            String cifradoBase64 = message[2];
+                            byte[] cifrado = Base64.getDecoder().decode(cifradoBase64);
+                            byte[] descifrado = CifradoAsimétrico.descifrar(publicKey, "RSA", cifrado);
+                            String mensajeDescifrado = new String(descifrado);
+                    
+                            System.out.println("CLIENTE: Mensaje descifrado: " + mensajeDescifrado);
+                            if (mensajeDescifrado.equals(mensajeEntrada)){
+                                userInput = "OK";
+                                Log.add(userInput);
+                                userInput = "4,"+userInput;
+                         
+                            } 
+                        } catch (Exception e) {
+                            System.out.println("Error descifrando el mensaje: " + e.getMessage());
+                            e.printStackTrace();
+                        }
+                  
                     }
                     else if (message[0].equals("7")){
                         System.out.println("CLIENT: Respuesta del servidor: "+message[1]
