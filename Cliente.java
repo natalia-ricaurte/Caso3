@@ -5,6 +5,8 @@ import java.security.Key;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Scanner;
+import java.util.Random;
+
 
 public class Cliente extends Thread {
     private String host;
@@ -48,7 +50,7 @@ public class Cliente extends Thread {
                     String rtaServer = in.readLine();
                     String[] message = rtaServer.split(",");
 
-                    if (message[0].equals("2")){
+                    if (message[0].equals("3")){
                         System.out.println("CLIENT: Respuesta del servidor: " + message[2]);
                         try {
                             String cifradoBase64 = message[2];
@@ -60,7 +62,7 @@ public class Cliente extends Thread {
                             if (mensajeDescifrado.equals(mensajeEntrada)){
                                 userInput = "OK";
                                 Log.add(userInput);
-                                userInput = "4,"+userInput;
+                                userInput = "5,"+userInput;
                          
                             } 
                         } catch (Exception e) {
@@ -72,10 +74,32 @@ public class Cliente extends Thread {
                     else if (message[0].equals("7")){
                         System.out.println("CLIENT: Respuesta del servidor: "+message[1]
                                             +","+message[2]+","+message[3]+","+message[4]+","+message[5]);
+                        String parametrosCifrados = message[1];
+                        byte[] aDescifrar = Base64.getDecoder().decode(parametrosCifrados);
+                        byte[] descifrado = CifradoAsimétrico.descifrar(publicKey, "RSA", aDescifrar);
+                        String parametrosDescifrados = new String(descifrado);
+                        String[] parametros = parametrosDescifrados.split(",");
+                        if(parametros[0].equals(G.toString()) && parametros[1].equals(P.toString())){
+                        userInput = "OK";    
+                        }
+                        else{
+                        userInput = "ERROR";
+                        }
                         // Validar Llave Asimetrica
-                        userInput = "OK";
+                        
                         Log.add(userInput);
                         userInput = "9," + userInput;
+
+                        Random random = new Random();
+                        int y = random.nextInt(1000);
+
+                        double gy = Math.pow((double)G, (double)y);
+                        userInput = Double.toString(gy);
+                        Log.add(userInput);
+                        userInput = "10," + userInput;
+
+                        int gx = Integer.parseInt(parametros[2]);
+                        double llaveSimetrica = Math.pow((double)gx, (double)y);
 
                     }
                     else if (message[0].equals("12")) {

@@ -4,6 +4,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.Key;
 import java.util.Base64;
+import java.util.Random;
 
 public class Servidor extends Thread {
     private int port;
@@ -33,6 +34,7 @@ public class Servidor extends Thread {
                 PrintWriter output = new PrintWriter(socket.getOutputStream(), true);
 
                 String clientInput;
+                int x = 0;
                 while ((clientInput = input.readLine()) != null) {
                     System.out.println("SERVER: Recibido del cliente: " + clientInput);
                     String [] message = clientInput.split(",");
@@ -41,25 +43,34 @@ public class Servidor extends Thread {
                      try {
                         byte[] cifrado = CifradoAsimétrico.cifrar(privateKey, "RSA", message[1]); 
                         String cifradoBase64 = Base64.getEncoder().encodeToString(cifrado);
-                        output.println("2,Cifra," + cifradoBase64); 
+                        output.println("3,Cifra," + cifradoBase64); 
                     } catch (Exception e) {
                         System.out.println("Error cifrando el mensaje: " + e.getMessage());
                         e.printStackTrace();
-}
-                    }
-                    else if (message[0].equals("4")){
+}}
+                    // ...
+
+                    else if (message[0].equals("5")){
                         if (message[1].equals("OK")) {
-                            output.println("7,G,P,Gx,iv,C(K_w-.(G.P.Gx))");
+                            Random random = new Random();                            
+                            x = random.nextInt(1000);
+                            double gx = Math.pow((double)G, (double)x);
+                            String mensaje = Integer.toString(G) + "," + P.toString() + "," + Double.toString(gx);
+                            byte[] aCifrar = CifradoAsimétrico.cifrar(privateKey, "RSA", mensaje);
+                            String parametrosCifrados = Base64.getEncoder().encodeToString(aCifrar);
+                            output.println("7,Cifra," + parametrosCifrados);
+                            //output.println("7,G,P,Gx,iv,C(K_w-.(G.P.Gx))");
                         }else{
                             output.println("ERROR");
-                        }
-                        
+                        }                        
                     }
                     else if (message[0].equals("9")){
                         if (message[1].equals("OK")) {
                             // Calcualr Gy^x
                             // K_AB1
                             // K_AB2
+                            int gy = Integer.parseInt(message[2]);
+                            double llaveSimetrica = Math.pow((double)gy, (double)x);
                             output.println("12,K_AB1,K_AB2");
                         }else{
                             output.println("ERROR");
@@ -87,5 +98,9 @@ public class Servidor extends Thread {
             System.err.println("Servidor Exception: " + e.getMessage());
             e.printStackTrace();
         }
-    }
+
+        }
 }
+
+
+
