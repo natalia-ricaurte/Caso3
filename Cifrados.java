@@ -1,6 +1,11 @@
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
 import java.security.Key;
+
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 
@@ -39,16 +44,20 @@ public class Cifrados {
 
 	private static final String PADDING = "AES/CBC/PKCS5Padding";
     
-    public static byte[] cifrarSim(SecretKey llave, IvParameterSpec ivSpec, String texto) {
-        try {
-            Cipher cifrador = Cipher.getInstance(PADDING);
-            cifrador.init(Cipher.ENCRYPT_MODE, llave, ivSpec);
-            byte[] textoCifrado = cifrador.doFinal(texto.getBytes(StandardCharsets.UTF_8));
-            return textoCifrado;
+    public static byte[] cifrarSim(SecretKey llave, IvParameterSpec ivSpec, byte[] texto) throws InvalidKeyException, InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException {
+        
+		Cipher cifrador = null;
+		try {
+            cifrador = Cipher.getInstance(PADDING);
+
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
+
+		cifrador.init(Cipher.ENCRYPT_MODE, llave, ivSpec);
+		byte[] textoCifrado = cifrador.doFinal(texto);
+		return textoCifrado;
     }
     
     public static byte[] descifrarSim(SecretKey llave, IvParameterSpec ivSpec, byte[] textoCifrado) {

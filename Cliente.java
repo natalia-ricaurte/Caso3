@@ -59,13 +59,17 @@ public class Cliente extends Thread {
                     if (message[0].equals("3")){
                         System.out.println("CLIENT: Respuesta del servidor: " + message[2]);
                         try {
-                            String mensaje = message[2];
-                            byte[] cifrado = ToByte(mensaje);
-                            byte[] descifrado = Cifrados.descifrarAsim(publicKey, "RSA", cifrado);
-                            String mensajeDescifrado = new String(descifrado);
-                    
-                            System.out.println("CLIENTE: Mensaje descifrado: " + mensajeDescifrado);
-                            if (mensajeDescifrado.equals(mensajeEntrada)){
+                            String firma = message[2];
+
+                            byte [] firmaBytes = ToByte(firma);
+               
+                            Signature publicSignature = Signature.getInstance("SHA256withRSA");
+                            publicSignature.initVerify(publicKey);
+                            publicSignature.update(mensajeEntrada.getBytes(StandardCharsets.UTF_8));
+                            boolean verificada = publicSignature.verify(firmaBytes);
+
+                            System.out.println("CLIENTE:Firma verificada " + firmaBytes);
+                            if (verificada){
                                 userInput = "OK";
                                 Log.add(userInput);
                                 userInput = "5,"+userInput;
@@ -147,8 +151,9 @@ public class Cliente extends Thread {
     
                         String login = "Login";
                         String contraseña = "Contraseña"; 
-                        byte[] cifrarL = Cifrados.cifrarSim(k_AB1,iv,login);
-                        byte[] cifrarC = Cifrados.cifrarSim(k_AB1,iv,contraseña);
+
+                        byte[] cifrarL = Cifrados.cifrarSim(k_AB1,iv,login.getBytes());
+                        byte[] cifrarC = Cifrados.cifrarSim(k_AB1,iv,contraseña.getBytes());
 
                         String loginCifrado = ToString(cifrarL);
                         String contraseñaCifrado = ToString(cifrarC);
@@ -158,16 +163,17 @@ public class Cliente extends Thread {
                     }
                     else if (message[0].equals("16")) {
                         System.out.println("CLIENT: Respuesta del servidor: " + rtaServer);
-                        int randConsulta = ThreadLocalRandom.current().nextInt(0, Integer.MAX_VALUE);
+                        
+                        int randConsulta = ThreadLocalRandom.current().nextInt(0, 100);
                         String consulta = Integer.toString(randConsulta);
                         byte[] consultaBytes = consulta.getBytes();
 
                         //Consulta C(K_AB1, consulta)
-                        byte[] consultaCifrada = Cifrados.cifrarSim(k_AB1, iv, consulta);
+                        byte[] consultaCifrada = Cifrados.cifrarSim(k_AB1, iv, consultaBytes);
 
                         //Consulta HMAC(K_AB2, consulta)
                         byte[] consultaHash = HMAC(k_AB2, consultaBytes);
-
+                        
                         String consultCifrada = ToString(consultaCifrada);
                         String consultHash = ToString(consultaHash);
                         userInput = "17," + consultCifrada + "," + consultHash;
@@ -175,17 +181,12 @@ public class Cliente extends Thread {
                     }else if (message[0].equals("19")) {
                         System.out.println("CLIENT: Respuesta del servidor: " + rtaServer);
                         // Verificar la respuesta
-                        String consultaCifrada = message[1];
-                        String consultaHash = message[2];
-                    
-                        byte[] cifradaConsulta = ToByte(consultaCifrada);
-                        byte[] hashConsulta = ToByte(consultaHash);
-                    
-                        byte[] descifradoConsulta = Cifrados.descifrarSim(k_AB2, iv, cifradaConsulta);
-                        String consulta = new String(descifradoConsulta);
+                        byte[] cifradaConsulta = ToByte(message[1]);
+                        byte[] hashConsulta = ToByte(message[2]);
 
-                        boolean hashVerificado = MAC(k_AB1, ToByte(consulta), hashConsulta);
-                    
+                        byte[] descifradoConsulta = Cifrados.descifrarSim(k_AB1, iv, cifradaConsulta);
+
+                        boolean hashVerificado = MAC(k_AB2,descifradoConsulta , hashConsulta);
                         System.out.println("21," + hashVerificado);
                     
                         if (hashVerificado) {
@@ -268,14 +269,18 @@ public class Cliente extends Thread {
     }
     // Funcion para verificar la integridad de un mensaje con un hash y una llave secreta 
     public boolean MAC( SecretKey key, byte[] msg,byte [] hash ) throws Exception
-	{
+	{ 
 		byte [] nuevo = HMAC(key,msg);
 		if (nuevo.length != hash.length) {
 			return false;
 		}
 		for (int i = 0; i < nuevo.length ; i++) {
-			if (nuevo[i] != hash[i]) return false;
+			if (nuevo[i] != hash[i]) {
+           
+            return false;
+            }
 		}
+
 		return true;
 	}
     

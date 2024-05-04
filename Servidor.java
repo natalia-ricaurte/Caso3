@@ -45,15 +45,24 @@ public class Servidor extends Thread {
                     String [] message = clientInput.split(",");
                     if (message[0].equals("1")){
 
-                        byte[] cifrado = Cifrados.cifrarAsim(privateKey, "RSA", message[1]); 
-                        String mensaje = ToString(cifrado);
-                        output.println("3,Cifra," + mensaje); 
+                        String mensaje = message[1];
+
+                        Signature privateSignature = Signature.getInstance("SHA256withRSA");
+                        privateSignature.initSign(privateKey);
+                        privateSignature.update(mensaje.getBytes(StandardCharsets.UTF_8));
+                        byte[] signature = privateSignature.sign();
+
+                        String firma = ToString(signature);
+
+                        output.println("3,Cifra," + firma); 
+
       
                     }
 
                     else if (message[0].equals("5")){
                         if (message[1].equals("OK")) {
                             SecureRandom random = new SecureRandom();
+                            
                             int var = Math.abs(random.nextInt());
                             Long longvar = Long.valueOf(var);
                             x = BigInteger.valueOf(longvar);  
@@ -61,11 +70,12 @@ public class Servidor extends Thread {
                             BigInteger bG = BigInteger.valueOf(G);
                             double gx = bG.modPow(x, P).doubleValue();
 
-                            byte[] ivBytes = new byte[16]; // AES usa un tamaño de bloque de 16 bytes
+                            byte[] ivBytes = new byte[16];
                             SecureRandom ra = new SecureRandom();
                             ra.nextBytes(ivBytes);
                             iv = new IvParameterSpec(ivBytes);
                             String ivHex = ToString(ivBytes);
+
                             String parametros = Integer.toString(G) + "," + P.toString() + "," + Double.toString(gx);
 
                             try {
@@ -137,14 +147,28 @@ public class Servidor extends Thread {
                         }
                     }
                     else if (message[0].equals("17")){
-                        String consultaCifrada = message[1];
-                        String consultaHash = message[2];
-                        byte[] hashConsulta = ToByte(consultaHash);
+                        byte [] consultaCifrada = ToByte(message[1]);
+                        byte [] consultaHash = ToByte(message[2]);
 
-                        byte[] consulta_rta = Cifrados.cifrarSim(k_AB2, iv,consultaCifrada);
-                        byte[] hash_rta = HMAC(k_AB2, hashConsulta);
 
-                        output.println("19," + ToString(consulta_rta) + "," + ToString(hash_rta));    
+                        byte [] descifrar = Cifrados.descifrarSim(k_AB1, iv, consultaCifrada);
+                        boolean verificacion = MAC(k_AB2, descifrar, consultaHash);
+
+                        if (verificacion){
+                            
+                            String valorDescifrado = new String(descifrar, StandardCharsets.UTF_8);
+                            int respuesta = Integer.parseInt(valorDescifrado ) -1 ;
+                            String str_respuesta = Integer.toString(respuesta);
+                            byte [] byte_respuesta = str_respuesta.getBytes();
+
+                            byte [] consulta_rta = Cifrados.cifrarSim(k_AB1, iv, byte_respuesta);
+                            byte [] hash_rta = HMAC(k_AB2, byte_respuesta);
+
+                            output.println("19," + ToString(consulta_rta) + "," + ToString(hash_rta)); 
+
+                        }else{
+                            output.println("ERROR");
+                        }  
                     }
                     else if (message[0].equals("21"))
                     {
@@ -215,6 +239,25 @@ public class Servidor extends Thread {
         byte[] bytes = mac.doFinal(msg);
         return bytes;
     }
+
+    // Funcion para verificar la integridad de un mensaje con un hash y una llave secreta 
+    public boolean MAC( SecretKey key, byte[] msg,byte [] hash ) throws Exception
+	{ 
+		byte [] nuevo = HMAC(key,msg);
+		if (nuevo.length != hash.length) {
+			return false;
+		}
+		for (int i = 0; i < nuevo.length ; i++) {
+			if (nuevo[i] != hash[i]) {
+           
+            return false;
+            }
+		}
+
+		return true;
+	}
+    
+
  
     
 }
