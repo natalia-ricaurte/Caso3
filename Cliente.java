@@ -1,22 +1,14 @@
 import java.io.*;
-import java.math.BigInteger;
+import java.math.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.Key;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
-import java.security.Signature;
-import java.security.SignatureException;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Scanner;
+import java.security.*;
+import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
+import javax.crypto.Mac;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
-
-import java.util.Random;
+import javax.crypto.spec.*;
 
 
 public class Cliente extends Thread {
@@ -27,6 +19,7 @@ public class Cliente extends Thread {
     private PublicKey publicKey;
     private SecretKey k_AB1;
     private SecretKey k_AB2;
+    private IvParameterSpec iv;
 
     public Cliente(String host, int port, BigInteger P, Integer G, PublicKey publicKey) {
         this.host = host;
@@ -68,7 +61,7 @@ public class Cliente extends Thread {
                         try {
                             String mensaje = message[2];
                             byte[] cifrado = ToByte(mensaje);
-                            byte[] descifrado = CifradoAsimétrico.descifrar(publicKey, "RSA", cifrado);
+                            byte[] descifrado = Cifrados.descifrarAsim(publicKey, "RSA", cifrado);
                             String mensajeDescifrado = new String(descifrado);
                     
                             System.out.println("CLIENTE: Mensaje descifrado: " + mensajeDescifrado);
@@ -88,9 +81,14 @@ public class Cliente extends Thread {
                     }
                     else if (message[0].equals("7")){
                         System.out.println("CLIENT: Respuesta del servidor: " + message[5]);
+                        
+                        String parametroIv = message[5];
+                        byte[] ivBytes = ToByte(parametroIv);
+                        iv = new IvParameterSpec(ivBytes);
+
                         String parametros = message[2] + "," + message[3]+ "," +message[4];
                     
-                        String firma = message[5];
+                        String firma = message[6];
         
                         byte [] firmaBytes = ToByte(firma);
                         try {
@@ -102,22 +100,24 @@ public class Cliente extends Thread {
                             System.out.println("Firma verificada: " + firmaBytes);
 
                             if (verificada){
+                                SecureRandom random = new SecureRandom();
+                                int var = Math.abs(random.nextInt());
+                                Long longvar = Long.valueOf(var);
+                                BigInteger y = BigInteger.valueOf(longvar);
 
-                          
+                                BigInteger bigG = BigInteger.valueOf(G);
+                                Double gy = bigG.modPow(y, P).doubleValue();
 
-                                Random random = new Random();
-                                int y = random.nextInt(1000);
+                                userInput = "10," + "OK," + gy.toString();
 
-                                double gy = Math.pow((double)G, (double)y);
-                                userInput = Double.toString(gy);
-                                userInput = "10," + "OK," + userInput;
-
-                                String gx = message[4];
-                                Double semilla = Math.pow(Double.parseDouble(gx), (double)y);
+                                String gx  = message[4];
+                                Double bigGX = Double.parseDouble(gx);
+                                Double semilla = Math.pow(bigGX, y.intValue()) % P.intValue();
+                                
 
                                 try {
-                                    k_AB1 =llaveSimetrica(semilla.toString(), 0, 32);
-                                    k_AB2 =llaveSimetrica(semilla.toString(), 32, 64);
+                                    k_AB1 = llaveSimetrica(semilla.toString(), 0, 32);
+                                    k_AB2 = llaveSimetrica(semilla.toString(), 32, 64);
                                 } catch (Exception e) {
                                     System.out.println("Error creando la llave simetrica: " + e.getMessage());
                                     e.printStackTrace();
@@ -144,24 +144,67 @@ public class Cliente extends Thread {
                     }
                     else if (message[0].equals("12")) {
                         System.out.println("CLIENT: Respuesta del servidor: " + rtaServer);
-                        userInput = "Login,Contraseña";
-                        Log.add(userInput);
-                        userInput = "13," + userInput;
+    
+                        String login = "Login";
+                        String contraseña = "Contraseña"; 
+                        byte[] cifrarL = Cifrados.cifrarSim(k_AB1,iv,login);
+                        byte[] cifrarC = Cifrados.cifrarSim(k_AB1,iv,contraseña);
+
+                        String loginCifrado = ToString(cifrarL);
+                        String contraseñaCifrado = ToString(cifrarC);
+
+
+                        userInput = "13," + loginCifrado + "," + contraseñaCifrado;
                     }
                     else if (message[0].equals("16")) {
                         System.out.println("CLIENT: Respuesta del servidor: " + rtaServer);
-                        userInput = "Consulta";
-                        Log.add(userInput);
-                        userInput = "17," + userInput;
+                        int randConsulta = ThreadLocalRandom.current().nextInt(0, Integer.MAX_VALUE);
+                        String consulta = Integer.toString(randConsulta);
+                        byte[] consultaBytes = consulta.getBytes();
+
+                        //Consulta C(K_AB1, consulta)
+                        byte[] consultaCifrada = Cifrados.cifrarSim(k_AB1, iv, consulta);
+
+                        //Consulta HMAC(K_AB2, consulta)
+                        byte[] consultaHash = HMAC(k_AB2, consultaBytes);
+
+                        String consultCifrada = ToString(consultaCifrada);
+                        String consultHash = ToString(consultaHash);
+                        userInput = "17," + consultCifrada + "," + consultHash;
                         
+                    }else if (message[0].equals("19")) {
+                        System.out.println("CLIENT: Respuesta del servidor: " + rtaServer);
+                        // Verificar la respuesta
+                        String consultaCifrada = message[1];
+                        String consultaHash = message[2];
+                    
+                        byte[] cifradaConsulta = ToByte(consultaCifrada);
+                        byte[] hashConsulta = ToByte(consultaHash);
+                    
+                        byte[] descifradoConsulta = Cifrados.descifrarSim(k_AB2, iv, cifradaConsulta);
+                        String consulta = new String(descifradoConsulta);
+
+                        boolean hashVerificado = MAC(k_AB1, ToByte(consulta), hashConsulta);
+                    
+                        System.out.println("21," + hashVerificado);
+                    
+                        if (hashVerificado) {
+                            break;
+                        } 
+                        else{
+                            System.out.println("Error");
+                            break;
+                        }
                     }
                     else {
                         System.out.println("CLIENT: Respuesta del servidor: " + rtaServer);
                         break;
                     }
-                    
-                    
+  
                 }
+            } catch (Exception e) {
+                System.err.println("Cliente Exception: " + e.getMessage());
+                e.printStackTrace();
             }
 
         } catch (IOException e) {
@@ -170,6 +213,8 @@ public class Cliente extends Thread {
         }
     }
 
+    // Funciones adicionales
+    // Convertir un string a un arreglo de bytes
     public byte[] ToByte( String texto)
 	{	
 		byte[] ret = new byte[texto.length()/2];
@@ -178,7 +223,7 @@ public class Cliente extends Thread {
 		}
 		return ret;
 	}
-	
+    // Convertir un arreglo de bytes a un string
 	public String ToString( byte[] bytes )
 	{	
 		String ret = "";
@@ -189,6 +234,7 @@ public class Cliente extends Thread {
 		return ret;
 	}
 
+    // Crear una llave simetrica a partir de una semilla y un rango de bytes 
     private SecretKey llaveSimetrica(String semilla, int inicio, int fin) throws Exception {
        
         // Convertir la semilla a bytes y calcular el hash SHA-512
@@ -203,4 +249,34 @@ public class Cliente extends Thread {
         // Crear y retornar la clave secreta AES
         return new SecretKeySpec(keyBytes, "AES");
     }
+    // Convertir un string hexadecimal a un string
+    public String hexToString(String hex) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        for (int i = 0; i < hex.length(); i += 2) {
+            String output = hex.substring(i, (i + 2));
+            int decimal = Integer.parseInt(output, 16);
+            baos.write(decimal);
+        }
+        return new String(baos.toByteArray(), StandardCharsets.UTF_8);
+    }
+    // Funcion HMAC para generar un hash de un mensaje con una llave secreta 
+    public byte[] HMAC(SecretKey key,byte[] msg) throws Exception {
+        Mac mac = Mac.getInstance("HMACSHA256");
+        mac.init(key);
+        byte[] bytes = mac.doFinal(msg);
+        return bytes;
+    }
+    // Funcion para verificar la integridad de un mensaje con un hash y una llave secreta 
+    public boolean MAC( SecretKey key, byte[] msg,byte [] hash ) throws Exception
+	{
+		byte [] nuevo = HMAC(key,msg);
+		if (nuevo.length != hash.length) {
+			return false;
+		}
+		for (int i = 0; i < nuevo.length ; i++) {
+			if (nuevo[i] != hash[i]) return false;
+		}
+		return true;
+	}
+    
 }
