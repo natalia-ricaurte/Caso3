@@ -1,10 +1,21 @@
 import java.io.*;
 import java.math.BigInteger;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
+import java.security.Signature;
+import java.security.SignatureException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Scanner;
+
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+
 import java.util.Random;
 
 
@@ -13,9 +24,11 @@ public class Cliente extends Thread {
     private int port;
     private BigInteger P;
     private Integer G;
-    private Key publicKey;
+    private PublicKey publicKey;
+    private SecretKey k_AB1;
+    private SecretKey k_AB2;
 
-    public Cliente(String host, int port, BigInteger P, Integer G, Key publicKey) {
+    public Cliente(String host, int port, BigInteger P, Integer G, PublicKey publicKey) {
         this.host = host;
         this.port = port;
         this.P = P;
@@ -53,8 +66,8 @@ public class Cliente extends Thread {
                     if (message[0].equals("3")){
                         System.out.println("CLIENT: Respuesta del servidor: " + message[2]);
                         try {
-                            String cifradoBase64 = message[2];
-                            byte[] cifrado = Base64.getDecoder().decode(cifradoBase64);
+                            String mensaje = message[2];
+                            byte[] cifrado = ToByte(mensaje);
                             byte[] descifrado = CifradoAsimétrico.descifrar(publicKey, "RSA", cifrado);
                             String mensajeDescifrado = new String(descifrado);
                     
@@ -63,6 +76,8 @@ public class Cliente extends Thread {
                                 userInput = "OK";
                                 Log.add(userInput);
                                 userInput = "5,"+userInput;
+                            } else {
+                                userInput = "ERROR";
                          
                             } 
                         } catch (Exception e) {
@@ -72,34 +87,59 @@ public class Cliente extends Thread {
                   
                     }
                     else if (message[0].equals("7")){
-                        System.out.println("CLIENT: Respuesta del servidor: "+message[1]
-                                            +","+message[2]+","+message[3]+","+message[4]+","+message[5]);
-                        String parametrosCifrados = message[1];
-                        byte[] aDescifrar = Base64.getDecoder().decode(parametrosCifrados);
-                        byte[] descifrado = CifradoAsimétrico.descifrar(publicKey, "RSA", aDescifrar);
-                        String parametrosDescifrados = new String(descifrado);
-                        String[] parametros = parametrosDescifrados.split(",");
-                        if(parametros[0].equals(G.toString()) && parametros[1].equals(P.toString())){
-                        userInput = "OK";    
+                        System.out.println("CLIENT: Respuesta del servidor: " + message[5]);
+                        String parametros = message[2] + "," + message[3]+ "," +message[4];
+                    
+                        String firma = message[5];
+        
+                        byte [] firmaBytes = ToByte(firma);
+                        try {
+                            Signature publicSignature = Signature.getInstance("SHA256withRSA");
+                            publicSignature.initVerify(publicKey);
+                            publicSignature.update(parametros.getBytes(StandardCharsets.UTF_8));
+                            boolean verificada = publicSignature.verify(firmaBytes);
+
+                            System.out.println("Firma verificada: " + firmaBytes);
+
+                            if (verificada){
+
+                          
+
+                                Random random = new Random();
+                                int y = random.nextInt(1000);
+
+                                double gy = Math.pow((double)G, (double)y);
+                                userInput = Double.toString(gy);
+                                userInput = "10," + "OK," + userInput;
+
+                                String gx = message[4];
+                                Double semilla = Math.pow(Double.parseDouble(gx), (double)y);
+
+                                try {
+                                    k_AB1 =llaveSimetrica(semilla.toString(), 0, 32);
+                                    k_AB2 =llaveSimetrica(semilla.toString(), 32, 64);
+                                } catch (Exception e) {
+                                    System.out.println("Error creando la llave simetrica: " + e.getMessage());
+                                    e.printStackTrace();
+                                }
+
+         
+                            } else {
+                                userInput = "ERROR";
+                                Log.add(userInput);
+                            }
+                        } catch (InvalidKeyException e) {
+                           System.out.println("Error verificando la firma: " + e.getMessage());
+                            e.printStackTrace();
+                        } catch (NoSuchAlgorithmException e) {
+                            System.out.println("Error verificando la firma: " + e.getMessage());
+                            e.printStackTrace();
+                        } catch (SignatureException e) {
+                            System.out.println("Error verificando la firma: " + e.getMessage());
+                            e.printStackTrace();
                         }
-                        else{
-                        userInput = "ERROR";
-                        }
-                        // Validar Llave Asimetrica
+
                         
-                        Log.add(userInput);
-                        userInput = "9," + userInput;
-
-                        Random random = new Random();
-                        int y = random.nextInt(1000);
-
-                        double gy = Math.pow((double)G, (double)y);
-                        userInput = Double.toString(gy);
-                        Log.add(userInput);
-                        userInput = "10," + userInput;
-
-                        int gx = Integer.parseInt(parametros[2]);
-                        double llaveSimetrica = Math.pow((double)gx, (double)y);
 
                     }
                     else if (message[0].equals("12")) {
@@ -128,5 +168,39 @@ public class Cliente extends Thread {
             System.err.println("Cliente Exception: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    public byte[] ToByte( String texto)
+	{	
+		byte[] ret = new byte[texto.length()/2];
+		for (int i = 0 ; i < ret.length ; i++) {
+			ret[i] = (byte) Integer.parseInt(texto.substring(i*2,(i+1)*2), 16);
+		}
+		return ret;
+	}
+	
+	public String ToString( byte[] bytes )
+	{	
+		String ret = "";
+		for (int i = 0 ; i < bytes.length ; i++) {
+			String texto = Integer.toHexString(((char)bytes[i])&0x00ff);
+			ret += (texto.length()==1?"0":"") + texto;
+		}
+		return ret;
+	}
+
+    private SecretKey llaveSimetrica(String semilla, int inicio, int fin) throws Exception {
+       
+        // Convertir la semilla a bytes y calcular el hash SHA-512
+        byte[] byteSemilla = semilla.trim().getBytes(StandardCharsets.UTF_8);
+        MessageDigest digest = MessageDigest.getInstance("SHA-512");
+        byte[] encodedHash = digest.digest(byteSemilla);
+
+        // Extraer una parte del hash para crear la clave secreta
+        byte[] keyBytes = new byte[fin - inicio];
+        System.arraycopy(encodedHash, inicio, keyBytes, 0, keyBytes.length);
+
+        // Crear y retornar la clave secreta AES
+        return new SecretKeySpec(keyBytes, "AES");
     }
 }
