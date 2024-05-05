@@ -46,13 +46,16 @@ public class Servidor extends Thread {
                     if (message[0].equals("1")){
 
                         String mensaje = message[1];
-
+                        long inicioFirma = System.nanoTime();
                         Signature privateSignature = Signature.getInstance("SHA256withRSA");
                         privateSignature.initSign(privateKey);
                         privateSignature.update(mensaje.getBytes(StandardCharsets.UTF_8));
                         byte[] signature = privateSignature.sign();
 
                         String firma = ToString(signature);
+                        long finFirma = System.nanoTime();
+                        
+                        System.out.println("Tiempo de firma: " + (finFirma - inicioFirma) + " nanosegundos");
 
                         output.println("3,Cifra," + firma); 
 
@@ -104,11 +107,14 @@ public class Servidor extends Thread {
                     else if (message[0].equals("10")){
                         if (message[1].equals("OK")) {
 
+                            long inicioAutenticacion = System.nanoTime();
                             String gy  = message[2];
                             Double bigGY = Double.parseDouble(gy);
                             
                             Double semilla = Math.pow(bigGY, x.intValue()) % P.intValue();
-                                
+                            long finAutenticacion = System.nanoTime();
+
+                            System.out.println("Tiempo de autenticacion SERVIDOR: " + (finAutenticacion - inicioAutenticacion) + " nanosegundos");
                                 try {
                                     k_AB1 =llaveSimetrica(semilla.toString(), 0, 32);
                                     k_AB2 =llaveSimetrica(semilla.toString(), 32, 64);
@@ -147,6 +153,7 @@ public class Servidor extends Thread {
                         }
                     }
                     else if (message[0].equals("17")){
+                        long inicioConsulta = System.nanoTime();
                         byte [] consultaCifrada = ToByte(message[1]);
                         byte [] consultaHash = ToByte(message[2]);
 
@@ -154,6 +161,9 @@ public class Servidor extends Thread {
                         byte [] descifrar = Cifrados.descifrarSim(k_AB1, iv, consultaCifrada);
                         boolean verificacion = MAC(k_AB2, descifrar, consultaHash);
 
+                        long finConsulta = System.nanoTime();
+
+                        System.out.println("Tiempo de consulta: " + (finConsulta - inicioConsulta) + " nanosegundos");
                         if (verificacion){
                             
                             String valorDescifrado = new String(descifrar, StandardCharsets.UTF_8);

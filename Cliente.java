@@ -85,7 +85,7 @@ public class Cliente extends Thread {
                     }
                     else if (message[0].equals("7")){
                         System.out.println("CLIENT: Respuesta del servidor: " + message[5]);
-                        
+                        long inicioVerificacionFirma = System.nanoTime();
                         String parametroIv = message[5];
                         byte[] ivBytes = ToByte(parametroIv);
                         iv = new IvParameterSpec(ivBytes);
@@ -100,10 +100,13 @@ public class Cliente extends Thread {
                             publicSignature.initVerify(publicKey);
                             publicSignature.update(parametros.getBytes(StandardCharsets.UTF_8));
                             boolean verificada = publicSignature.verify(firmaBytes);
+                            long finVerificacionFirma = System.nanoTime();
+                            System.out.println("Tiempo de verificacion de firma: " + (finVerificacionFirma - inicioVerificacionFirma) + " ns");
 
                             System.out.println("Firma verificada: " + firmaBytes);
 
                             if (verificada){
+                                long inicioCalculoGy = System.nanoTime();
                                 SecureRandom random = new SecureRandom();
                                 int var = Math.abs(random.nextInt());
                                 Long longvar = Long.valueOf(var);
@@ -111,13 +114,16 @@ public class Cliente extends Thread {
 
                                 BigInteger bigG = BigInteger.valueOf(G);
                                 Double gy = bigG.modPow(y, P).doubleValue();
-
+                                long finCalculoGy = System.nanoTime();
+                                System.out.println("Tiempo de calculo de Gy: " + (finCalculoGy - inicioCalculoGy) + " ns");
                                 userInput = "10," + "OK," + gy.toString();
 
+                                long inicioAutenticacion = System.nanoTime();
                                 String gx  = message[4];
                                 Double bigGX = Double.parseDouble(gx);
                                 Double semilla = Math.pow(bigGX, y.intValue()) % P.intValue();
-                                
+                                long finAutenticacion = System.nanoTime();
+                                System.out.println("Tiempo de autenticacion CLIENTE: " + (finAutenticacion - inicioAutenticacion) + " ns");
 
                                 try {
                                     k_AB1 = llaveSimetrica(semilla.toString(), 0, 32);
@@ -163,7 +169,7 @@ public class Cliente extends Thread {
                     }
                     else if (message[0].equals("16")) {
                         System.out.println("CLIENT: Respuesta del servidor: " + rtaServer);
-                        
+                        long inicioConsulta = System.nanoTime();
                         int randConsulta = ThreadLocalRandom.current().nextInt(0, 100);
                         String consulta = Integer.toString(randConsulta);
                         byte[] consultaBytes = consulta.getBytes();
@@ -176,6 +182,8 @@ public class Cliente extends Thread {
                         
                         String consultCifrada = ToString(consultaCifrada);
                         String consultHash = ToString(consultaHash);
+                        long finConsulta = System.nanoTime();
+                        System.out.println("Tiempo de generacion consulta: " + (finConsulta - inicioConsulta) + " ns");
                         userInput = "17," + consultCifrada + "," + consultHash;
                         
                     }else if (message[0].equals("19")) {
