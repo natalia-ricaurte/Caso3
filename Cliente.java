@@ -20,6 +20,7 @@ public class Cliente extends Thread {
     private SecretKey k_AB1;
     private SecretKey k_AB2;
     private IvParameterSpec iv;
+    private ManejadorTiempos mt;
 
     public Cliente(String host, int port, BigInteger P, Integer G, PublicKey publicKey) {
         this.host = host;
