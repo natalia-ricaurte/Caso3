@@ -44,11 +44,12 @@ public class Cliente extends Thread {
                 
                 ArrayList<String> Log = new ArrayList<String>();
 
-                System.out.print("Inicie la comunicacion con el servidor: ");
-                userInput = scanner.nextLine();
-                String mensajeEntrada = userInput;
-                Log.add(userInput);
-                userInput = "1,"+userInput;
+                //System.out.print("Inicie la comunicacion con el servidor: ");
+                //userInput = scanner.nextLine();
+                String mensajeEntrada = "SECURE INIT";
+                System.out.println("CLIENT: Inicio de la comunicacion con el servidor: " + mensajeEntrada);
+                Log.add(mensajeEntrada);
+                userInput = "1,"+mensajeEntrada;
 
                 
                 while (true) {
