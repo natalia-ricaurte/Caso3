@@ -16,7 +16,6 @@ public class Servidor extends Thread {
     private SecretKey k_AB2;
     private BigInteger x;
     private IvParameterSpec iv;
-    private ManejadorTiempos mt;
 
     public Servidor(int port, BigInteger P, Integer G, PublicKey publicKey, PrivateKey privateKey) {
         this.port = port;
@@ -57,7 +56,6 @@ public class Servidor extends Thread {
                         long finFirma = System.nanoTime();
                         
                         System.out.println("Tiempo de firma: " + (finFirma - inicioFirma) + " nanosegundos");
-                        mt.addTServerSign(finFirma - inicioFirma);
                         output.println("3,Cifra," + firma); 
 
       

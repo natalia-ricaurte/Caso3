@@ -22,8 +22,6 @@ public class App {
         PrivateKey privteKey = keys.getPrivateKey();
         PublicKey publicKey = keys.getPublicKey();
 
-
-        ManejadorTiempos mt = new ManejadorTiempos();
         Servidor servidor = new Servidor(port,P,G,publicKey,privteKey);
         //Cliente cliente = new Cliente("localhost", port, P, G,publicKey);
 
